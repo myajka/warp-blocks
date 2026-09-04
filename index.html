@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive technical assessment of Bitcoin's timewarp behavior, Warp Blocks, and BIP-54.">
+  <title>Warp Blocks — Bitcoin's latent block-rate control</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap">
+  <link rel="stylesheet" href="./styles.css?v=937">
+  <link rel="stylesheet" href="./motion.css?v=721">
+  <script>document.documentElement.classList.add("js-motion");</script>
+</head>
+<body>
+  <div class="grid-glow" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Warp Blocks home">WARP BLOCKS</a>
+    <nav aria-label="Primary navigation">
+      <a href="#introduction">Introduction</a>
+      <a href="#mechanism">Mechanism</a>
+      <a href="#model">Model</a>
+      <a href="#tradeoffs">Trade-offs</a>
+      <a href="#claims">Claims</a>
+    </nav>
+    <button class="burger" id="burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i></button>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-stage" aria-hidden="true">
+        <canvas id="heroFx" class="hero-fx"></canvas>
+      </div>
+        <div class="hero-lines"><i></i><i></i><i></i></div>
+        <div class="hero-lightbed"><i></i><i></i><i></i></div>
+      </div>
+
+      <div class="hero-inner">
+        <p class="hero-eyebrow">INTERACTIVE RESEARCH BRIEF</p>
+
+        <h1 class="hero-title">The clock Bitcoin<br>didn&#39;t know it had<span class="dot">.</span></h1>
+
+        <p class="hero-lede">
+          Coordinated miners can use Bitcoin&#39;s existing timestamp rules to lower difficulty
+          and create more valid blocks per hour—without first changing consensus.
+          BIP-54 closes that path.
+        </p>
+
+        <div class="hero-actions">
+          <a class="hero-cta" href="#model">Explore the model<i aria-hidden="true">&darr;</i></a>
+          <a class="hero-cta secondary" href="https://github.com/bitcoin/bips/blob/master/bip-0054.md" target="_blank" rel="noreferrer">Read BIP-54<svg class="gh" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 .2a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-1-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.4.7.1-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-3.9 0-.9.3-1.6.8-2.1-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.5 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3-1.8 3.7-3.6 3.9.3.3.5.8.5 1.5v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .2Z"/></svg></a>
+        </div>
+      </div>
+
+      <canvas id="heroClock" class="hero-hidden-canvas" role="img" aria-label="Block height accelerating relative to wall time"></canvas>
+      <output id="heroCadence" class="hero-hidden-canvas">05:00</output>
+    </section>
+
+    <section id="thesis" class="thesis-band">
+      <div class="section-shell thesis-grid">
+        <p class="section-index">00 / THESIS</p>
+        <blockquote class="fill-scroll">
+          Timewarp is not <em>only</em> an attack primitive. It is also an already-valid,
+          miner-controlled way to alter Bitcoin's block cadence. Before removing that option,
+          Bitcoin should measure its full design space.
+        </blockquote>
+        <div class="thesis-note">
+          <strong>THE CLAIM WE CAN DEFEND</strong>
+          <p>Not “Satoshi planned it.” Not “there is no risk.” The serious claim is that a real protocol option is being closed before its constructive use has been rigorously tested.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="introduction" class="chapter section-shell">
+      <div class="chapter-heading">
+        <p class="section-index">01 / INTRODUCTION</p>
+        <h2>First: what does<br>Bitcoin call “time”?</h2>
+        <p>Bitcoin does not have one authoritative clock. It has several measurements that normally move together closely enough that users rarely notice the difference.</p>
+      </div>
+
+      <div class="clock-definitions">
+        <article>
+          <span>01</span>
+          <div class="def-ico"><svg class="def-svg" viewBox="0 0 140 140" aria-hidden="true"><rect x="50" y="0" width="8" height="8" fill="#D9660F"/><rect x="60" y="0" width="8" height="8" fill="#FFA85C"/><rect x="70" y="0" width="8" height="8" fill="#D9660F"/><rect x="30" y="10" width="8" height="8" fill="#D9660F"/><rect x="40" y="10" width="8" height="8" fill="#D9660F"/><rect x="80" y="10" width="8" height="8" fill="#D9660F"/><rect x="90" y="10" width="8" height="8" fill="#D9660F"/><rect x="20" y="20" width="8" height="8" fill="#D9660F"/><rect x="100" y="20" width="8" height="8" fill="#D9660F"/><rect x="10" y="30" width="8" height="8" fill="#D9660F"/><rect x="110" y="30" width="8" height="8" fill="#D9660F"/><rect x="10" y="40" width="8" height="8" fill="#D9660F"/><rect x="110" y="40" width="8" height="8" fill="#D9660F"/><rect x="0" y="50" width="8" height="8" fill="#D9660F"/><rect x="120" y="50" width="8" height="8" fill="#D9660F"/><rect x="0" y="60" width="8" height="8" fill="#FFA85C"/><rect x="60" y="60" width="8" height="8" fill="#FFA85C"/><rect x="120" y="60" width="8" height="8" fill="#FFA85C"/><rect x="0" y="70" width="8" height="8" fill="#D9660F"/><rect x="120" y="70" width="8" height="8" fill="#D9660F"/><rect x="10" y="80" width="8" height="8" fill="#D9660F"/><rect x="110" y="80" width="8" height="8" fill="#D9660F"/><rect x="10" y="90" width="8" height="8" fill="#D9660F"/><rect x="110" y="90" width="8" height="8" fill="#D9660F"/><rect x="20" y="100" width="8" height="8" fill="#D9660F"/><rect x="100" y="100" width="8" height="8" fill="#D9660F"/><rect x="30" y="110" width="8" height="8" fill="#D9660F"/><rect x="40" y="110" width="8" height="8" fill="#D9660F"/><rect x="80" y="110" width="8" height="8" fill="#D9660F"/><rect x="90" y="110" width="8" height="8" fill="#D9660F"/><rect x="50" y="120" width="8" height="8" fill="#D9660F"/><rect x="60" y="120" width="8" height="8" fill="#FFA85C"/><rect x="70" y="120" width="8" height="8" fill="#D9660F"/><g class="ic-hand ic-hand-h" style="transform-origin:64px 64px"><rect x="60" y="30" width="8" height="8" fill="#FFA85C"/><rect x="60" y="40" width="8" height="8" fill="#FFA85C"/><rect x="60" y="50" width="8" height="8" fill="#FFA85C"/></g><g class="ic-hand ic-hand-m" style="transform-origin:64px 64px"><rect x="70" y="60" width="8" height="8" fill="#FFA85C"/><rect x="80" y="60" width="8" height="8" fill="#FFA85C"/><rect x="90" y="60" width="8" height="8" fill="#FFA85C"/><rect x="100" y="60" width="8" height="8" fill="#FFA85C"/></g></svg></div>
+          <h3>Wall time</h3>
+          <p>The time humans and network nodes experience. Miners cannot make a real week pass twice as fast.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <div class="def-ico"><svg class="def-svg" viewBox="0 0 140 140" aria-hidden="true"><rect x="50" y="30" width="8" height="8" fill="#FFA85C"/><rect x="40" y="40" width="8" height="8" fill="#FFA85C"/><rect x="50" y="40" width="8" height="8" fill="#FFA85C"/><rect x="60" y="40" width="8" height="8" fill="#FFA85C"/><rect x="30" y="50" width="8" height="8" fill="#FFA85C"/><rect x="50" y="50" width="8" height="8" fill="#FFA85C"/><rect x="70" y="50" width="8" height="8" fill="#FFA85C"/><rect x="50" y="60" width="8" height="8" fill="#FFA85C"/><rect x="50" y="70" width="8" height="8" fill="#FFA85C"/><rect x="80" y="70" width="8" height="8" fill="#D9660F"/><rect x="90" y="70" width="8" height="8" fill="#D9660F"/><rect x="100" y="70" width="8" height="8" fill="#D9660F"/><rect x="110" y="70" width="8" height="8" fill="#D9660F"/><rect x="120" y="70" width="8" height="8" fill="#D9660F"/><rect x="50" y="80" width="8" height="8" fill="#FFA85C"/><rect x="80" y="80" width="8" height="8" fill="#D9660F"/><rect x="90" y="80" width="8" height="8" fill="#8a3f08"/><rect x="100" y="80" width="8" height="8" fill="#8a3f08"/><rect x="110" y="80" width="8" height="8" fill="#8a3f08"/><rect x="120" y="80" width="8" height="8" fill="#D9660F"/><rect x="50" y="90" width="8" height="8" fill="#FFA85C"/><rect x="80" y="90" width="8" height="8" fill="#D9660F"/><rect x="90" y="90" width="8" height="8" fill="#D9660F"/><rect x="100" y="90" width="8" height="8" fill="#D9660F"/><rect x="110" y="90" width="8" height="8" fill="#D9660F"/><rect x="120" y="90" width="8" height="8" fill="#D9660F"/><rect x="80" y="100" width="8" height="8" fill="#D9660F"/><rect x="90" y="100" width="8" height="8" fill="#D9660F"/><rect x="100" y="100" width="8" height="8" fill="#D9660F"/><rect x="110" y="100" width="8" height="8" fill="#D9660F"/><rect x="120" y="100" width="8" height="8" fill="#D9660F"/><rect x="80" y="110" width="8" height="8" fill="#D9660F"/><rect x="90" y="110" width="8" height="8" fill="#8a3f08"/><rect x="100" y="110" width="8" height="8" fill="#8a3f08"/><rect x="110" y="110" width="8" height="8" fill="#8a3f08"/><rect x="120" y="110" width="8" height="8" fill="#D9660F"/><rect x="80" y="120" width="8" height="8" fill="#D9660F"/><rect x="90" y="120" width="8" height="8" fill="#D9660F"/><rect x="100" y="120" width="8" height="8" fill="#D9660F"/><rect x="110" y="120" width="8" height="8" fill="#D9660F"/><rect x="120" y="120" width="8" height="8" fill="#D9660F"/><g class="ic-drop"><rect x="80" y="10" width="8" height="8" fill="#FFA85C"/><rect x="90" y="10" width="8" height="8" fill="#FFA85C"/><rect x="100" y="10" width="8" height="8" fill="#FFA85C"/><rect x="110" y="10" width="8" height="8" fill="#FFA85C"/><rect x="120" y="10" width="8" height="8" fill="#FFA85C"/><rect x="80" y="20" width="8" height="8" fill="#FFA85C"/><rect x="90" y="20" width="8" height="8" fill="#8a3f08"/><rect x="100" y="20" width="8" height="8" fill="#8a3f08"/><rect x="110" y="20" width="8" height="8" fill="#8a3f08"/><rect x="120" y="20" width="8" height="8" fill="#FFA85C"/><rect x="80" y="30" width="8" height="8" fill="#FFA85C"/><rect x="90" y="30" width="8" height="8" fill="#FFA85C"/><rect x="100" y="30" width="8" height="8" fill="#FFA85C"/><rect x="110" y="30" width="8" height="8" fill="#FFA85C"/><rect x="120" y="30" width="8" height="8" fill="#FFA85C"/></g></svg></div>
+          <h3>Block height</h3>
+          <p>A count of accepted blocks. Subsidy halvings and height-based deadlines follow this clock.</p>
+        </article>
+        <article>
+          <span>03</span>
+          <div class="def-ico"><svg class="def-svg" viewBox="0 0 140 140" aria-hidden="true"><rect x="10" y="10" width="8" height="8" fill="#D9660F"/><rect x="20" y="10" width="8" height="8" fill="#D9660F"/><rect x="30" y="10" width="8" height="8" fill="#D9660F"/><rect x="40" y="10" width="8" height="8" fill="#D9660F"/><rect x="50" y="10" width="8" height="8" fill="#D9660F"/><rect x="60" y="10" width="8" height="8" fill="#D9660F"/><rect x="70" y="10" width="8" height="8" fill="#D9660F"/><rect x="80" y="10" width="8" height="8" fill="#D9660F"/><rect x="90" y="10" width="8" height="8" fill="#D9660F"/><rect x="100" y="10" width="8" height="8" fill="#D9660F"/><rect x="110" y="10" width="8" height="8" fill="#D9660F"/><rect x="120" y="10" width="8" height="8" fill="#D9660F"/><rect x="10" y="20" width="8" height="8" fill="#D9660F"/><rect x="20" y="20" width="8" height="8" fill="#D9660F"/><rect x="30" y="20" width="8" height="8" fill="#D9660F"/><rect x="40" y="20" width="8" height="8" fill="#D9660F"/><rect x="50" y="20" width="8" height="8" fill="#D9660F"/><rect x="60" y="20" width="8" height="8" fill="#D9660F"/><rect x="70" y="20" width="8" height="8" fill="#D9660F"/><rect x="80" y="20" width="8" height="8" fill="#D9660F"/><rect x="90" y="20" width="8" height="8" fill="#D9660F"/><rect x="100" y="20" width="8" height="8" fill="#D9660F"/><rect x="110" y="20" width="8" height="8" fill="#D9660F"/><rect x="120" y="20" width="8" height="8" fill="#D9660F"/><rect x="10" y="30" width="8" height="8" fill="#8a3f08"/><rect x="120" y="30" width="8" height="8" fill="#8a3f08"/><rect x="10" y="40" width="8" height="8" fill="#8a3f08"/><rect x="120" y="40" width="8" height="8" fill="#8a3f08"/><rect x="10" y="50" width="8" height="8" fill="#8a3f08"/><rect x="120" y="50" width="8" height="8" fill="#8a3f08"/><rect x="10" y="60" width="8" height="8" fill="#8a3f08"/><rect x="120" y="60" width="8" height="8" fill="#8a3f08"/><rect x="10" y="70" width="8" height="8" fill="#8a3f08"/><rect x="120" y="70" width="8" height="8" fill="#8a3f08"/><rect x="10" y="80" width="8" height="8" fill="#8a3f08"/><rect x="120" y="80" width="8" height="8" fill="#8a3f08"/><rect x="10" y="90" width="8" height="8" fill="#D9660F"/><rect x="20" y="90" width="8" height="8" fill="#D9660F"/><rect x="30" y="90" width="8" height="8" fill="#D9660F"/><rect x="40" y="90" width="8" height="8" fill="#D9660F"/><rect x="50" y="90" width="8" height="8" fill="#D9660F"/><rect x="60" y="90" width="8" height="8" fill="#D9660F"/><rect x="70" y="90" width="8" height="8" fill="#D9660F"/><rect x="80" y="90" width="8" height="8" fill="#D9660F"/><rect x="90" y="90" width="8" height="8" fill="#D9660F"/><rect x="100" y="90" width="8" height="8" fill="#D9660F"/><rect x="110" y="90" width="8" height="8" fill="#D9660F"/><rect x="120" y="90" width="8" height="8" fill="#D9660F"/><g class="ic-blink"><rect x="30" y="40" width="8" height="8" fill="#FFA85C"/><rect x="40" y="40" width="8" height="8" fill="#FFA85C"/><rect x="50" y="40" width="8" height="8" fill="#FFA85C"/><rect x="70" y="40" width="8" height="8" fill="#FFA85C"/><rect x="80" y="40" width="8" height="8" fill="#FFA85C"/><rect x="90" y="40" width="8" height="8" fill="#FFA85C"/><rect x="30" y="60" width="8" height="8" fill="#FFA85C"/><rect x="40" y="60" width="8" height="8" fill="#FFA85C"/><rect x="60" y="60" width="8" height="8" fill="#FFA85C"/><rect x="70" y="60" width="8" height="8" fill="#FFA85C"/><rect x="80" y="60" width="8" height="8" fill="#FFA85C"/><rect x="100" y="60" width="8" height="8" fill="#FFA85C"/><rect x="110" y="60" width="8" height="8" fill="#FFA85C"/></g></svg></div>
+          <h3>Header timestamp</h3>
+          <p>A value selected by the miner who creates each block. It is constrained, but it does not need to equal wall time.</p>
+        </article>
+        <article>
+          <span>04</span>
+          <div class="def-ico"><svg class="def-svg" viewBox="0 0 140 140" aria-hidden="true"><rect x="10" y="120" width="8" height="8" fill="#D9660F"/><rect x="10" y="110" width="8" height="8" fill="#D9660F"/><rect x="10" y="100" width="8" height="8" fill="#D9660F"/><rect x="20" y="120" width="8" height="8" fill="#D9660F"/><rect x="20" y="110" width="8" height="8" fill="#D9660F"/><rect x="20" y="100" width="8" height="8" fill="#D9660F"/><rect x="20" y="90" width="8" height="8" fill="#D9660F"/><rect x="20" y="80" width="8" height="8" fill="#D9660F"/><rect x="20" y="70" width="8" height="8" fill="#D9660F"/><rect x="30" y="120" width="8" height="8" fill="#D9660F"/><rect x="30" y="110" width="8" height="8" fill="#D9660F"/><rect x="30" y="100" width="8" height="8" fill="#D9660F"/><rect x="30" y="90" width="8" height="8" fill="#D9660F"/><rect x="40" y="120" width="8" height="8" fill="#D9660F"/><rect x="40" y="110" width="8" height="8" fill="#D9660F"/><rect x="40" y="100" width="8" height="8" fill="#D9660F"/><rect x="40" y="90" width="8" height="8" fill="#D9660F"/><rect x="40" y="80" width="8" height="8" fill="#D9660F"/><rect x="40" y="70" width="8" height="8" fill="#D9660F"/><rect x="40" y="60" width="8" height="8" fill="#D9660F"/><rect x="40" y="50" width="8" height="8" fill="#D9660F"/><rect x="50" y="120" width="8" height="8" fill="#D9660F"/><rect x="50" y="110" width="8" height="8" fill="#D9660F"/><rect x="50" y="100" width="8" height="8" fill="#D9660F"/><rect x="50" y="90" width="8" height="8" fill="#D9660F"/><rect x="50" y="80" width="8" height="8" fill="#D9660F"/><rect x="60" y="120" width="8" height="8" fill="#FFA85C" class="ic-median"/><rect x="60" y="110" width="8" height="8" fill="#FFA85C" class="ic-median"/><rect x="60" y="100" width="8" height="8" fill="#FFA85C" class="ic-median"/><rect x="60" y="90" width="8" height="8" fill="#FFA85C" class="ic-median"/><rect x="60" y="80" width="8" height="8" fill="#FFA85C" class="ic-median"/><rect x="60" y="70" width="8" height="8" fill="#FFA85C" class="ic-median"/><rect x="60" y="60" width="8" height="8" fill="#FFA85C" class="ic-median"/><rect x="70" y="120" width="8" height="8" fill="#D9660F"/><rect x="70" y="110" width="8" height="8" fill="#D9660F"/><rect x="70" y="100" width="8" height="8" fill="#D9660F"/><rect x="70" y="90" width="8" height="8" fill="#D9660F"/><rect x="70" y="80" width="8" height="8" fill="#D9660F"/><rect x="80" y="120" width="8" height="8" fill="#D9660F"/><rect x="80" y="110" width="8" height="8" fill="#D9660F"/><rect x="80" y="100" width="8" height="8" fill="#D9660F"/><rect x="80" y="90" width="8" height="8" fill="#D9660F"/><rect x="80" y="80" width="8" height="8" fill="#D9660F"/><rect x="80" y="70" width="8" height="8" fill="#D9660F"/><rect x="80" y="60" width="8" height="8" fill="#D9660F"/><rect x="80" y="50" width="8" height="8" fill="#D9660F"/><rect x="80" y="40" width="8" height="8" fill="#D9660F"/><rect x="90" y="120" width="8" height="8" fill="#D9660F"/><rect x="90" y="110" width="8" height="8" fill="#D9660F"/><rect x="90" y="100" width="8" height="8" fill="#D9660F"/><rect x="90" y="90" width="8" height="8" fill="#D9660F"/><rect x="100" y="120" width="8" height="8" fill="#D9660F"/><rect x="100" y="110" width="8" height="8" fill="#D9660F"/><rect x="100" y="100" width="8" height="8" fill="#D9660F"/><rect x="100" y="90" width="8" height="8" fill="#D9660F"/><rect x="100" y="80" width="8" height="8" fill="#D9660F"/><rect x="100" y="70" width="8" height="8" fill="#D9660F"/><rect x="110" y="120" width="8" height="8" fill="#D9660F"/><rect x="110" y="110" width="8" height="8" fill="#D9660F"/><rect x="110" y="100" width="8" height="8" fill="#D9660F"/></svg></div>
+          <h3>Median Time Past</h3>
+          <p>The median of eleven recent timestamps. Bitcoin uses it for time-based transaction locks.</p>
+        </article>
+      </div>
+
+      <div class="explanation-grid">
+        <h3 class="explain-title">Difficulty answers to<br>timestamps, not to time.</h3>
+        <div class="explain-body">
+          <div class="formula-block">
+            <span>the target period</span>
+            <div class="formula-line"><b data-count="2016" data-sep="1">0</b><i>blocks</i></div>
+            <div class="formula-line"><em>&times;</em><b data-count="600">0</b><i>seconds</i></div>
+            <div class="formula-line is-total"><em>=</em><b data-count="14">0</b><i>days</i></div>
+            <small>The implementation actually measures 2,015 intervals, a historic off-by-one preserved by consensus.</small>
+          </div>
+
+          <div class="explain-columns">
+            <p>Bitcoin adjusts mining difficulty every 2,016 blocks. If the period appears to take longer than expected, the next period becomes easier. If it appears shorter, mining becomes harder.</p>
+            <p>The important detail is that Bitcoin measures the period using timestamps written into the first and final blocks—not an external clock.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mechanism" class="mechanism-story">
+      <div class="section-shell">
+        <div class="chapter-heading">
+          <p class="section-index">02 / THE MECHANISM</p>
+          <h2>How can seven days<br>look like fourteen?</h2>
+          <p>The trick is not to speed up physical time. It is to create a larger timestamp span than the real time miners spent producing the blocks.</p>
+        </div>
+
+        <div class="mechanism-steps">
+          <article>
+            <span>STEP 01</span>
+            <div class="step-icon low-time"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <h3>Keep ordinary timestamps low</h3>
+            <code>timestamp = MTP + 1</code>
+            <p>Participating miners choose the smallest timestamp allowed by the previous eleven blocks.</p>
+          </article>
+          <article>
+            <span>STEP 02</span>
+            <div class="step-icon jump-time"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <h3>Jump at the period's end</h3>
+            <code>observed span ≈ 14 days</code>
+            <p>The final participant chooses a higher timestamp, making the period appear longer than it was.</p>
+          </article>
+          <article>
+            <span>STEP 03</span>
+            <div class="step-icon reset-time"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <h3>Reset and repeat</h3>
+            <code>next first block → low again</code>
+            <p>Current rules allow the next period's first timestamp to fall back toward MTP. Difficulty stays low.</p>
+          </article>
+        </div>
+
+        <div class="plain-result">
+          <span>THE RESULT</span>
+          <p class="fill-scroll fill-orange">If unchanged hash power mines at half difficulty, blocks arrive roughly twice as often. The per-block limit stays unchanged, but the network gets roughly twice as much blockspace per hour.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="model" class="model section-shell">
+      <div class="chapter-heading">
+        <p class="section-index">03 / LIVE MODEL</p>
+        <h2>One epoch.<br>Three different readings.</h2>
+        <p>Start with the two essential assumptions. The comparison below translates them into days instead of protocol internals.</p>
+      </div>
+
+      <div class="model-layout">
+        <aside class="controls" aria-label="Simulation controls">
+          <div class="controls-head">
+            <span>SCENARIO CONTROLS</span>
+            <button id="resetControls" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.55 3.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.6 2.3v3.1H9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>reset</button>
+          </div>
+
+          <label class="control-row" data-affects="#cleanMetric,#participationChart">
+            <span><b>Miner participation</b><output id="participationOut">95%</output></span>
+            <input id="participation" type="range" min="50" max="100" value="95" step="1">
+            <small>Coalition share using Warp timestamps</small>
+          </label>
+
+          <label class="control-row" data-affects="#capacityMetric,#weightMetric,#lagMetric,#tpsMetric,#bipChart,.epoch-rows">
+            <span><b>Target block interval</b><output id="intervalOut">5m 00s</output></span>
+            <input id="interval" type="range" min="75" max="600" value="300" step="15">
+            <small>Requested mean wall-clock cadence</small>
+          </label>
+
+          <label class="toggle-row" data-affects="#capacityMetric,#lagMetric,#bipChart,.epoch-rows">
+            <span><b>Apply BIP-54 boundary rules<span class="hint-btn" role="button" tabindex="0" aria-label="What this changes" data-hint="Replaces the requested interval with the BIP-54 floor of 596.72s and drops the boundary lag to zero. Watch: effective capacity, required boundary lag, chart 02.">i</span></b><small>Caps material timewarp acceleration</small></span>
+            <input id="bip54" type="checkbox" role="switch">
+            <i aria-hidden="true"></i>
+          </label>
+
+          <details class="advanced-controls">
+            <summary>ADVANCED ASSUMPTIONS <span>+</span></summary>
+
+            <label class="control-row" data-affects="#difficultyHint">
+              <span><b>Hash-rate multiplier</b><span class="hint-btn" role="button" tabindex="0" aria-label="What this changes" data-hint="Does not change the outcome by itself — it shows which relative difficulty is needed to hold the chosen interval at this hash rate. Watch: the difficulty line under this slider.">i</span><output id="hashrateOut">1.00×</output></span>
+              <input id="hashrate" type="range" min="50" max="200" value="100" step="5">
+              <small id="difficultyHint">Requires difficulty 0.50× baseline</small>
+            </label>
+
+            <label class="control-row" data-affects="#tradeOverlap">
+              <span><b>Propagation window</b><span class="hint-btn" role="button" tabindex="0" aria-label="What this changes" data-hint="Sets how often two blocks are found at once: overlap = 1 − e^(−propagation / interval). Watch: orphan overlap in chapter 05.">i</span><output id="propagationOut">5.0s</output></span>
+              <input id="propagation" type="range" min="5" max="300" value="50" step="5">
+              <small>Illustrative relay + validation delay</small>
+            </label>
+
+            <label class="control-row" data-affects="#weightMetric,#tpsMetric">
+              <span><b>Average fill</b><output id="fillOut">90%</output></span>
+              <input id="fill" type="range" min="25" max="100" value="90" step="1">
+            </label>
+
+            <label class="control-row" data-affects="#tpsMetric">
+              <span><b>Average transaction weight</b><output id="txWeightOut">900 WU</output></span>
+              <input id="txWeight" type="range" min="400" max="2000" value="900" step="25">
+            </label>
+
+            <label class="control-row" data-affects="#tradeFees">
+              <span><b>Fee-demand elasticity</b><span class="hint-btn" role="button" tabindex="0" aria-label="What this changes" data-hint="Describes how fee revenue answers to extra blockspace: fee ratio = speed^(1 − 1/elasticity). Watch: fee pressure in chapter 05.">i</span><output id="elasticityOut">1.00</output></span>
+              <input id="elasticity" type="range" min="30" max="300" value="100" step="5">
+              <small>Toy economics model only</small>
+            </label>
+          </details>
+        </aside>
+
+        <div class="dashboard">
+          <div class="metric-grid">
+            <article class="metric accent">
+              <span>EFFECTIVE CAPACITY</span>
+              <strong id="capacityMetric">2.00×</strong>
+              <small id="weightMetric">43.2 MWU / hour</small>
+            </article>
+            <article class="metric">
+              <span>CLEAN-EPOCH PROXY</span>
+              <strong id="cleanMetric">99.45%</strong>
+              <small>no 6-of-11 dissenting window</small>
+            </article>
+            <article class="metric warning">
+              <span>REQUIRED BOUNDARY LAG</span>
+              <strong id="lagMetric">6.92d</strong>
+              <small>analytic lower-bound approximation</small>
+            </article>
+            <article class="metric">
+              <span>ESTIMATED THROUGHPUT</span>
+              <strong id="tpsMetric">13.3 TPS</strong>
+              <small>depends on transaction mix</small>
+            </article>
+          </div>
+
+          <article class="chart-card epoch-card">
+            <div class="card-head">
+              <div>
+                <span class="chart-number">CHART 01</span>
+                <h3>What one difficulty period means</h3>
+              </div>
+              <span class="badge model">PLAIN-LANGUAGE VIEW</span>
+            </div>
+            <p class="epoch-intro" id="epochIntro">At five-minute blocks, miners finish 2,016 blocks in seven real days. Bitcoin's height schedule advances by a full 14-day period.</p>
+            <div class="epoch-rows" role="img" aria-label="Comparison of real time, block-height schedule, and reported timestamp span for one difficulty period">
+              <div class="epoch-row wall-row">
+                <div><strong>Real world</strong><small>Time people actually wait</small></div>
+                <div class="epoch-track"><i id="epochRealBar"></i></div>
+                <output id="epochRealValue">7.00 days</output>
+              </div>
+              <div class="epoch-row height-row">
+                <div><strong>Block-height schedule</strong><small>2,016 blocks at normal cadence</small></div>
+                <div class="epoch-track"><i></i></div>
+                <output id="epochHeightValue">14.00 days</output>
+              </div>
+              <div class="epoch-row timestamp-row">
+                <div><strong>Timestamp span</strong><small>What the retarget must observe</small></div>
+                <div class="epoch-track"><i></i></div>
+                <output id="epochTimestampValue">14.00 days</output>
+              </div>
+            </div>
+            <div class="epoch-result">
+              <span>THE REQUIRED TRICK</span>
+              <strong id="epochLagValue">Reset the next epoch ≈ 6.92 days behind</strong>
+              <p id="clockCaption">The extra timestamp span is created at the difficulty-period boundary. BIP-54 limits this reset to two hours.</p>
+            </div>
+          </article>
+
+          <div class="chart-split">
+            <article class="chart-card">
+              <div class="card-head">
+                <div><span class="chart-number">CHART 02</span><h3>Participation cliff</h3></div>
+                <span class="badge exact">EXACT DP</span>
+              </div>
+              <canvas id="participationChart" role="img" aria-label="Clean epoch probability by miner participation"></canvas>
+              <p class="chart-caption">A reliability proxy, not a consensus threshold. The exact dynamic program tracks overlapping 11-block windows.</p>
+            </article>
+
+            <article class="chart-card">
+              <div class="card-head">
+                <div><span class="chart-number">CHART 03</span><h3>BIP-54 A / B</h3></div>
+                <span class="badge rule">CONSENSUS RULE</span>
+              </div>
+              <canvas id="bipChart" role="img" aria-label="Requested cadence compared with BIP-54 limited cadence"></canvas>
+              <p class="chart-caption">BIP-54 removes the multi-day boundary reset. Its two-hour grace leaves only a sub-percent residual effect.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="interpretation section-shell">
+      <div class="chapter-heading compact">
+        <p class="section-index">04 / READING<br> THE RESULTS</p>
+        <h2>What did the model<br>actually show?</h2>
+        <p>A model is useful only when its claims stop where its assumptions stop.</p>
+      </div>
+
+      <div class="evidence-grid">
+        <article class="supports">
+          <span>THE EVIDENCE SUPPORTS</span>
+          <h3>A real capacity mechanism</h3>
+          <ul>
+            <li>Current timestamp rules can steer difficulty downward.</li>
+            <li>Five-minute blocks can roughly double weight per hour.</li>
+            <li>Reliability rises sharply around 90–95% participation.</li>
+            <li>BIP-54 removes the multi-day boundary reset.</li>
+          </ul>
+        </article>
+        <article class="does-not">
+          <span>IT DOES NOT YET PROVE</span>
+          <h3>A production-safe scaling policy</h3>
+          <ul>
+            <li>That miners remain economically willing to cooperate.</li>
+            <li>That network propagation remains safe at every target speed.</li>
+            <li>That applications tolerate distorted Median Time Past.</li>
+            <li>That additional capacity produces additional fee revenue.</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="clock-consequence">
+        <div>
+          <span>HEIGHT-BASED DEADLINES</span>
+          <strong>Mature sooner</strong>
+          <p>Twice as many blocks means a deadline measured in blocks arrives in roughly half the wall time.</p>
+          <div class="race"><i class="race-bar fast"></i></div>
+        </div>
+        <i>≠</i>
+        <div>
+          <span>TIME-BASED DEADLINES</span>
+          <strong>May mature later</strong>
+          <p>The minimum-timestamp strategy can make Median Time Past advance extremely slowly.</p>
+          <div class="race"><i class="race-bar slow"></i></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tradeoffs" class="tradeoffs">
+      <div class="section-shell">
+        <div class="chapter-heading">
+          <p class="section-index">05 / TRADE-OFFS</p>
+          <h2>More blocks.<br>Not more work.</h2>
+          <p>At fixed physical hash rate, increasing block frequency divides the same expected work into smaller units.</p>
+        </div>
+
+        <div class="trade-grid">
+          <article class="trade-card orange">
+            <span>CAPACITY</span>
+            <strong id="tradeCapacity">+100%</strong>
+            <p>More valid block weight per wall-clock hour, assuming blocks remain equally full.</p>
+          </article>
+          <article class="trade-card blue">
+            <span>WORK PER BLOCK</span>
+            <strong id="tradeWork">−50%</strong>
+            <p>Six confirmations at 2× cadence contain about three baseline blocks of expected proof of work.</p>
+          </article>
+          <article class="trade-card red">
+            <span>OVERLAP PROXY</span>
+            <strong id="tradeOverlap">1.65%</strong>
+            <p>Chance of another block appearing inside the selected propagation window. Not a stale-rate forecast.</p>
+          </article>
+          <article class="trade-card neutral">
+            <span>FEE REVENUE / TIME</span>
+            <strong id="tradeFees">1.00×</strong>
+            <p>A deliberately simple elasticity scenario. Demand—not block count alone—determines fees.</p>
+          </article>
+        </div>
+
+        <article class="security-chart chart-card dark-card">
+          <div class="card-head">
+            <div><span class="chart-number">CHART 04</span><h3>Capacity and work move in opposite directions</h3></div>
+            <span class="badge model">ANALYTIC</span>
+          </div>
+          <canvas id="securityChart" role="img" aria-label="Capacity multiplier and proof of work per block across block speedups"></canvas>
+        </article>
+      </div>
+    </section>
+
+    <section id="claims" class="claims section-shell">
+      <div class="chapter-heading compact">
+        <p class="section-index">06 / CLAIMS UNDER TEST</p>
+        <h2>What sounds right—<br>but isn't.</h2>
+        <p>The strongest case for preserving the option does not need exaggerated promises.</p>
+      </div>
+
+      <div class="claim-list">
+        <details open>
+          <summary><span>01</span><strong>“Six confirmations become secure in thirty minutes.”</strong><i>FALSE</i></summary>
+          <p>At fixed hash rate, doubling block frequency roughly halves expected work per block. Six Warp confirmations contain about three ordinary blocks of work. Inclusion is faster; equal-work settlement is not.</p>
+        </details>
+        <details>
+          <summary><span>02</span><strong>“Ninety percent is the protocol threshold.”</strong><i>NOT EXACTLY</i></summary>
+          <p>There is no consensus constant at 90%. In the public-strategy proxy used here, 90% produces a clean epoch about 78% of the time; 95% produces one about 99.45% of the time.</p>
+        </details>
+        <details>
+          <summary><span>03</span><strong>“A 51% attacker is already fatal, so timewarp adds nothing.”</strong><i>TOO SIMPLE</i></summary>
+          <p>A majority already has serious powers, but security analysis still distinguishes additional capabilities. Timewarp adds monetary-schedule acceleration and difficulty manipulation to that threat model.</p>
+        </details>
+        <details>
+          <summary><span>04</span><strong>“More blocks automatically mean more mining fees.”</strong><i>UNPROVEN</i></summary>
+          <p>Additional capacity can lower the clearing fee or distribute the same transactions across more blocks. Fee revenue rises only if additional demand is strong enough.</p>
+        </details>
+        <details>
+          <summary><span>05</span><strong>“BIP-54 is only about timewarp.”</strong><i>FALSE</i></summary>
+          <p>BIP-54 bundles four consensus cleanups. A case against its timestamp rule does not answer its signature-operation, Merkle-tree, or duplicate-transaction proposals.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="bip-explainer section-shell">
+      <div class="chapter-heading">
+          <p class="section-index">07 / THE DECISION</p>
+          <h2>What BIP-54 closes.</h2>
+        </div>
+      <div class="rules-grid">
+        <article>
+          <span>CURRENT CONSENSUS</span>
+          <h3>A multi-day reset remains possible</h3>
+          <code>t[first] &gt; MTP(previous 11)</code>
+          <p>The first timestamp of a new difficulty period can fall far behind the previous period's final timestamp, preserving the lag reservoir.</p>
+        </article>
+        <div class="rule-arrow" aria-hidden="true">→</div>
+        <article class="proposed">
+          <span>BIP-54 PROPOSAL</span>
+          <h3>The reset is limited to two hours</h3>
+          <code>t[N] ≥ t[N−1] − 7200</code>
+          <p>The required multi-day discontinuity disappears. Material Warp scaling collapses to a residual sub-percent acceleration.</p>
+        </article>
+      </div>
+      <div class="decision-callout">
+        <span>THE OPEN QUESTION</span>
+        <p>Should ten-minute cadence be an invariant miners cannot alter—or should this option remain until Bitcoin evaluates a safer explicit mechanism for changing L1 capacity?</p>
+        <a class="question-cta" href="#" data-needs-url>JOIN DISCUSSION ON <b>X</b></a>
+      </div>
+    </section>
+
+    <section id="sources" class="sources">
+      <div class="section-shell sources-grid">
+        <div>
+          <p class="section-index">08 / SOURCES & LIMITS</p>
+          <h2>Built to be challenged.</h2>
+          <p>This site separates consensus rules, analytic approximations, deterministic calculations, and economic scenarios. The model is an explainer—not evidence that Warp Blocks is production-safe.</p>
+        </div>
+        <ol>
+          <li><a href="https://github.com/bitcoin/bips/blob/master/bip-0054.md" target="_blank" rel="noreferrer"><span>01</span>BIP-54 · Consensus Cleanup <b>↗</b></a></li>
+          <li><a href="https://github.com/bitcoin/bitcoin/blob/master/src/pow.cpp" target="_blank" rel="noreferrer"><span>02</span>Bitcoin Core · pow.cpp <b>↗</b></a></li>
+          <li><a href="https://bips.dev/113/" target="_blank" rel="noreferrer"><span>03</span>BIP-113 · Median Time Past <b>↗</b></a></li>
+          <li><a href="https://delvingbitcoin.org/t/timewarp-attack-600-second-grace-period/1326/32" target="_blank" rel="noreferrer"><span>04</span>Pieter Wuille · grace-period analysis <b>↗</b></a></li>
+          <li><a href="https://bips.dev/3/" target="_blank" rel="noreferrer"><span>05</span>BIP-3 · What “Complete” means <b>↗</b></a></li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-bottom">
+      <p class="footer-by">Warp Blocks — open research on Bitcoin&rsquo;s block-rate control &copy; 2026</p>
+      <div class="footer-links">
+        <span>Read the primary sources:</span>
+        <div class="footer-chips">
+          <a href="https://github.com/bitcoin/bips/blob/master/bip-0054.md" target="_blank" rel="noreferrer">BIP-54</a>
+          <a href="https://bips.dev/113/" target="_blank" rel="noreferrer">BIP-113</a>
+          <a href="https://github.com/bitcoin/bitcoin/blob/master/src/pow.cpp" target="_blank" rel="noreferrer">pow.cpp</a>
+        </div>
+      </div>
+      <a class="footer-top-link" href="#top">BACK TO TOP &uarr;</a>
+    </div>
+  </footer>
+
+  <noscript>This interactive brief requires JavaScript for its charts and model controls.</noscript>
+  <script src="./nav-toggle.js?v=1" defer></script>
+  <script src="./app.js?v=926" defer></script>
+  <script src="./hero-scene.js?v=888" defer></script>
+  <script src="./motion.js?v=710" defer></script>
+  <script src="step-play.js?v=1"></script>
+  <script src="claims-scroll.js?v=927"></script>
+  <script src="race.js?v=930"></script>
+  <script src="model-links.js?v=872"></script>
+  <script src="sticky-controls.js?v=881"></script>
+  <script src="model-cue.js?v=1"></script>
+  <script src="count-up.js?v=1"></script>
+  <script src="line-reveal.js?v=3"></script>
+  <script src="thesis-fill.js?v=820"></script>
+  <script src="grid-glow.js?v=2"></script>
+</body>
+</html>

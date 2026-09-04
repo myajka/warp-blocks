@@ -1,0 +1,462 @@
+/* ============================================================================
+   СИСТЕМА ДВИЖЕНИЯ — единый почерк для всей страницы
+   ----------------------------------------------------------------------------
+   Токены (кривые, длительности, шаги каскада, амплитуды) живут в :root
+   внутри styles.css. Здесь — только их применение.
+
+   Правила, которым подчинено всё ниже:
+   · движется transform и opacity; цвет и фон меняются переходами;
+   · размытие — однократное, на входе блока, не больше 6px;
+   · вход всегда медленнее выхода, вход — ease-out, уход — ease-in;
+   · суммарный каскад в любой группе < 500 мс;
+   · класс .js-motion ставит motion.js — без скриптов страница видима целиком.
+   ============================================================================ */
+
+/* ── 1. ПОЯВЛЕНИЕ ПРИ ПРОКРУТКЕ ──────────────────────────────────────────── */
+
+.js-motion [data-reveal] {
+  --rd: calc(var(--i, 0) * var(--stag, 0ms));
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-y), 0);
+  transition:
+    opacity   var(--dur-4) var(--ease-enter) var(--rd, 0ms),
+    transform var(--dur-4) var(--ease-enter) var(--rd, 0ms),
+    filter    var(--dur-4) var(--ease-enter) var(--rd, 0ms);
+}
+.js-motion [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* заголовок главы — ход крупнее, короткое размытие снимает «щелчок» шрифта */
+.js-motion [data-reveal="head"] {
+  --reveal-y: 22px;
+  filter: blur(5px);
+  transition-duration: var(--dur-5);
+}
+
+/* шаг каскада по типу группы: чем крупнее элемент, тем реже такт */
+.js-motion .chapter-heading > *,
+.js-motion .section-heading > *,
+.js-motion .sources-grid > div > * { --stag: var(--stag-3); }
+
+.js-motion .clock-definitions article,
+.js-motion .metric,
+.js-motion .claim-list details,
+.js-motion .sources li,
+.js-motion .evidence-grid article { --stag: var(--stag-1); }
+
+.js-motion .mechanism-steps article,
+.js-motion .trade-card,
+.js-motion .rules-grid > *,
+.js-motion .chart-split > * { --stag: var(--stag-2); }
+
+/* первый экран: вход по загрузке. Ведёт заголовок, карточка — точка в конце */
+@keyframes wbHeroIn {
+  from { opacity: 0; transform: translate3d(0, 18px, 0); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+.js-motion .hero-eyebrow,
+.js-motion .hero-title,
+.js-motion .hero-lede,
+.js-motion .glass-card,
+.js-motion .topbar > * {
+  animation: wbHeroIn var(--dur-5) var(--ease-enter) both;
+}
+.js-motion .topbar > *    { animation-duration: var(--dur-4); animation-delay: 60ms; }
+.js-motion .hero-eyebrow  { animation-delay: 100ms; }
+.js-motion .hero-title    { animation-delay: 180ms; }
+.js-motion .hero-lede     { animation-delay: 320ms; }
+.js-motion .glass-card    { animation-delay: 470ms; }
+
+/* ── 2. ЗАКРЕПЛЁННАЯ ШАПКА ───────────────────────────────────────────────── */
+
+.topbar {
+  transition:
+    background-color var(--dur-3) var(--ease-inout),
+    border-color     var(--dur-3) var(--ease-inout),
+    transform        420ms        var(--ease-move);
+}
+/* уезжает вверх при движении вниз, возвращается на первом движении вверх */
+.topbar.is-hidden { transform: translate3d(0, -102%, 0); }
+
+/* полоса прогресса чтения — единственный «датчик» на странице */
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--orange);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: 0 50%;
+  opacity: 0;
+  transition: opacity var(--dur-3) var(--ease-inout);
+  pointer-events: none;
+}
+.topbar.is-stuck::after { opacity: .85; }
+
+/* навигация: подчёркивание растёт слева, активный раздел держит его приглушённым */
+.topbar nav a { position: relative; transition: color var(--dur-2) var(--ease-inout); }
+.topbar nav a::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -7px;
+  height: 1px;
+  background: var(--orange);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform var(--dur-2) var(--ease-enter), opacity var(--dur-2) var(--ease-inout);
+}
+.topbar nav a.is-current { color: #fff; }
+.topbar nav a.is-current::after { transform: scaleX(1); opacity: .45; }
+
+.topbar .brand {
+  transition: color var(--dur-2) var(--ease-inout), transform var(--dur-1) var(--ease-enter);
+}
+.head-action:active, .topbar .brand:active { transform: scale(.97); }
+
+@media (min-width: 901px) {
+  .head-action { display: inline-flex; transition: color var(--dur-2) var(--ease-inout), transform var(--dur-1) var(--ease-enter); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .topbar nav a:hover::after { transform: scaleX(1); opacity: 1; }
+}
+
+/* ── 3. КАРТОЧКИ И ПОВЕРХНОСТИ ПОД КУРСОРОМ ──────────────────────────────── */
+
+.clock-definitions article,
+.mechanism-steps article,
+.trade-card,
+.metric,
+.rules-grid article,
+.evidence-grid article,
+.chart-card,
+.clock-consequence > div {
+  position: relative;
+  transition:
+    transform        var(--dur-3) var(--ease-enter),
+    background-color var(--dur-3) var(--ease-inout);
+}
+
+/* верхняя грань — тонкий оранжевый шов, раскрывается слева направо */
+.clock-definitions article::after,
+.mechanism-steps article::after,
+.trade-card::after,
+.metric::after,
+.rules-grid article:not(.proposed)::after,
+.evidence-grid article::after,
+.chart-card::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 2px;
+  background: var(--orange);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform var(--dur-3) var(--ease-enter);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.clock-definitions span,
+.mechanism-steps article > span,
+.trade-card > span { transition: color var(--dur-3) var(--ease-inout); }
+
+@media (hover: hover) and (pointer: fine) {
+  .clock-definitions article:hover,
+  .mechanism-steps article:hover,
+  .trade-card:hover,
+  .metric:hover,
+  .rules-grid article:hover,
+  .evidence-grid article:hover,
+  .clock-consequence > div:hover {
+    transform: translate3d(0, var(--lift-2), 0);
+    background-color: #171b19;
+  }
+  .clock-definitions article:hover::after,
+  .mechanism-steps article:hover::after,
+  .trade-card:hover::after,
+  .metric:hover::after,
+  .rules-grid article:not(.proposed):hover::after,
+  .evidence-grid article:hover::after,
+  .chart-card:hover::after { transform: scaleX(1); }
+
+  .clock-definitions article:hover span,
+  .mechanism-steps article:hover > span,
+  .trade-card:hover > span { color: var(--orange); }
+}
+
+/* графики не «прыгают»: полотно должно стоять на месте */
+.chart-card:hover { transform: none; background-color: #121716; }
+
+/* ── 4. ССЫЛКИ И СПИСКИ ──────────────────────────────────────────────────── */
+
+.sources li a { transition: color var(--dur-2) var(--ease-inout), transform var(--dur-2) var(--ease-enter); }
+.sources li b { display: inline-block; transition: transform var(--dur-2) var(--ease-enter); }
+.sources li span { transition: color var(--dur-2) var(--ease-inout); }
+footer a { display: inline-block; transition: transform var(--dur-2) var(--ease-enter), opacity var(--dur-2) var(--ease-inout); }
+
+@media (hover: hover) and (pointer: fine) {
+  .sources li a:hover { transform: translate3d(6px, 0, 0); }
+  .sources li a:hover b { transform: translate3d(3px, -3px, 0); }
+  .sources li a:hover span { color: var(--orange); }
+  footer a:hover { transform: translate3d(0, -2px, 0); opacity: .78; }
+}
+
+/* ── 5. ЭЛЕМЕНТЫ УПРАВЛЕНИЯ МОДЕЛИ ───────────────────────────────────────── */
+
+/* Ползунок. Дорожка закрашена до бегунка и НЕ сглажена переходом:
+   при прямом перетаскивании элемент обязан быть жёстко привязан к курсору. */
+input[type="range"] {
+  background:
+    linear-gradient(90deg,
+      var(--orange) 0 var(--range-fill, 50%),
+      rgba(255, 255, 255, .16) var(--range-fill, 50%) 100%);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+input[type="range"]::-webkit-slider-thumb {
+  transition:
+    transform        var(--dur-1) var(--ease-enter),
+    box-shadow       var(--dur-2) var(--ease-enter),
+    background-color var(--dur-2) var(--ease-inout);
+}
+input[type="range"]::-moz-range-thumb {
+  transition:
+    transform        var(--dur-1) var(--ease-enter),
+    box-shadow       var(--dur-2) var(--ease-enter),
+    background-color var(--dur-2) var(--ease-inout);
+}
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--orange); box-shadow: 0 0 0 5px rgba(217, 102, 15,.14); }
+input[type="range"]:hover::-moz-range-thumb    { background: var(--orange); box-shadow: 0 0 0 5px rgba(217, 102, 15,.14); }
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.3); box-shadow: 0 0 0 8px rgba(217, 102, 15,.2); }
+input[type="range"]:active::-moz-range-thumb     { transform: scale(1.3); box-shadow: 0 0 0 8px rgba(217, 102, 15,.2); }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(217, 102, 15,.45); }
+
+/* строка управления держит подсветку, пока её тянут */
+.control-row, .toggle-row { transition: background-color var(--dur-3) var(--ease-inout); }
+.control-row.is-active { background-color: rgba(217, 102, 15, .05); }
+
+/* переключатель: ход с малым перелётом — единственный перелёт в системе */
+.toggle-row i { transition: background-color var(--dur-2) var(--ease-inout), box-shadow var(--dur-2) var(--ease-inout); }
+.toggle-row i::after { transition: transform 260ms var(--ease-settle); }
+.toggle-row input:focus-visible + i { box-shadow: 0 0 0 3px rgba(217, 102, 15,.4); }
+.toggle-row:active i::after { transform: scaleX(1.18); }
+.toggle-row input:checked + i::after { transform: translateX(18px); }
+.toggle-row input:checked:active + i::after { transform: translateX(18px) scaleX(1.18); }
+@media (hover: hover) and (pointer: fine) { .toggle-row:hover { background-color: rgba(255,255,255,.03); } }
+
+/* кнопки: нажатие мгновенное, возврат — с успокоением */
+.controls-head button {
+  transition: color var(--dur-2) var(--ease-inout), transform 180ms var(--ease-enter);
+  touch-action: manipulation;
+}
+.controls-head button:hover { color: var(--orange-soft); }
+.controls-head button:active { transform: scale(.92); transition-duration: 0ms; }
+
+/* раскрывающиеся блоки: «плюс» доворачивается, содержимое приезжает каскадом */
+.advanced-controls summary { transition: color var(--dur-2) var(--ease-inout); }
+.advanced-controls summary:hover { color: var(--orange-soft); }
+.advanced-controls summary span {
+  display: inline-block;
+  transition: transform var(--dur-3) var(--ease-enter), color var(--dur-2) var(--ease-inout);
+}
+@keyframes wbSlideIn {
+  from { opacity: 0; transform: translate3d(0, -8px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.js-motion .advanced-controls[open] > .control-row { animation: wbSlideIn var(--dur-3) var(--ease-enter) both; }
+.js-motion .advanced-controls[open] > .control-row:nth-of-type(1) { animation-delay: 20ms; }
+.js-motion .advanced-controls[open] > .control-row:nth-of-type(2) { animation-delay: 55ms; }
+.js-motion .advanced-controls[open] > .control-row:nth-of-type(3) { animation-delay: 90ms; }
+.js-motion .advanced-controls[open] > .control-row:nth-of-type(4) { animation-delay: 125ms; }
+.js-motion .advanced-controls[open] > .control-row:nth-of-type(5) { animation-delay: 160ms; }
+
+/* утверждения раскрываются тем же почерком */
+.claim-list summary { transition: color var(--dur-2) var(--ease-inout); }
+.claim-list summary strong,
+.claim-list summary span,
+.claim-list summary i {
+  transition: transform var(--dur-2) var(--ease-enter), color var(--dur-2) var(--ease-inout);
+}
+.js-motion .claim-list details[open] > p { animation: wbSlideIn var(--dur-3) var(--ease-enter) both; }
+.claim-list details[open] summary span { color: var(--orange); }
+@media (hover: hover) and (pointer: fine) {
+  .claim-list summary:hover strong { transform: translate3d(4px, 0, 0); }
+  .claim-list summary:hover span { color: var(--orange); }
+}
+
+/* ── 6. СМЕНА ЧИСЛОВЫХ ЗНАЧЕНИЙ ──────────────────────────────────────────── */
+/* Пока ползунок тянут, число не щёлкает — держит «живое» состояние.
+   Отсечка играет ровно один раз, когда значение устоялось (см. motion.js). */
+
+[data-num] {
+  display: inline-block;
+  transition: color var(--dur-3) var(--ease-inout);
+}
+[data-num].is-live { color: var(--orange-soft); }
+.metric.accent [data-num].is-live,
+.metric.warning [data-num].is-live,
+.control-row [data-num].is-live { color: inherit; }
+
+@keyframes wbNumTick {
+  0%   { opacity: .45; transform: translate3d(0, -4px, 0); }
+  55%  { opacity: 1;   transform: translate3d(0, 0, 0); }
+  100% { opacity: 1;   transform: none; }
+}
+.js-motion [data-num].is-tick { animation: wbNumTick 280ms var(--ease-enter); }
+
+/* полосы «одной эпохи»: масштаб вместо ширины — ширина пересчитывает раскладку */
+.epoch-track i {
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--fill, 1));
+  transition: transform 420ms var(--ease-move);
+}
+.wall-row .epoch-track i { width: 100%; }
+.js-motion .epoch-rows[data-reveal] .epoch-track i { transform: scaleX(0); }
+.js-motion .epoch-rows[data-reveal].is-in .epoch-track i { transform: scaleX(var(--fill, 1)); }
+.js-motion .epoch-rows[data-reveal].is-in .epoch-row:nth-child(1) .epoch-track i { transition-delay: 80ms; }
+.js-motion .epoch-rows[data-reveal].is-in .epoch-row:nth-child(2) .epoch-track i { transition-delay: 160ms; }
+.js-motion .epoch-rows[data-reveal].is-in .epoch-row:nth-child(3) .epoch-track i { transition-delay: 240ms; }
+
+/* ── 7. ПОЯВЛЕНИЕ ГРАФИКОВ ───────────────────────────────────────────────── */
+/* Полотно открывается шторкой слева направо — так же, как читается ось X.
+   Однократно; сам рисунок не перерисовывается, движется только маска. */
+
+.js-motion [data-chart] canvas {
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+  transition:
+    clip-path var(--dur-5) var(--ease-move) 120ms,
+    opacity   var(--dur-3) linear 120ms;
+}
+.js-motion [data-chart].is-in canvas {
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+}
+
+/* столбики шага механизма растут снизу волной */
+.js-motion .mechanism-steps article .step-icon i {
+  transform: scaleY(0);
+  transform-origin: 50% 100%;
+  transition: transform 420ms var(--ease-enter);
+}
+.js-motion .mechanism-steps article.is-in .step-icon i { transform: scaleY(1); }
+.js-motion .mechanism-steps article.is-in .step-icon i:nth-child(1) { transition-delay: calc(var(--rd, 0ms) + 120ms); }
+.js-motion .mechanism-steps article.is-in .step-icon i:nth-child(2) { transition-delay: calc(var(--rd, 0ms) + 165ms); }
+.js-motion .mechanism-steps article.is-in .step-icon i:nth-child(3) { transition-delay: calc(var(--rd, 0ms) + 210ms); }
+.js-motion .mechanism-steps article.is-in .step-icon i:nth-child(4) { transition-delay: calc(var(--rd, 0ms) + 255ms); }
+.js-motion .mechanism-steps article.is-in .step-icon i:nth-child(5) { transition-delay: calc(var(--rd, 0ms) + 300ms); }
+.js-motion .mechanism-steps article.is-in .step-icon i:nth-child(6) { transition-delay: calc(var(--rd, 0ms) + 345ms); }
+
+/* ── 8. ФОНОВЫЙ СЛОЙ ─────────────────────────────────────────────────────── */
+/* Разметочная сетка едва заметно дышит: 22 с на цикл, одна opacity. */
+@keyframes wbGridBreathe {
+  0%, 100% { opacity: .8; }
+  50%      { opacity: 1; }
+}
+.js-motion body::before { animation: wbGridBreathe 22s var(--ease-sine) infinite; }
+
+/* ── 9. КАРТОЧКА ПЕРВОГО ЭКРАНА — «ТЕПЛОВОЕ ПЯТНО» ───────────────────────── */
+/* Покой: два тёплых пятна медленно дрейфуют под стеклом, 19 с на цикл.
+   Курсор: пятно уходит под указатель с отставанием ~260 мс.
+   Слой отрисован заранее — движется только его transform. */
+
+.glass-card {
+  --px: 120px;
+  --py: 50px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07);
+  transition:
+    border-color     var(--dur-3) var(--ease-inout),
+    background-color var(--dur-3) var(--ease-inout),
+    transform        var(--dur-3) var(--ease-enter);
+}
+
+/* слой 1 — дрейф: два тёплых пятна, отрисованы один раз, движется transform */
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  background:
+    radial-gradient(26% 42% at 30% 44%, rgba(217, 102, 15, .30), rgba(217, 102, 15, 0) 68%),
+    radial-gradient(19% 33% at 74% 62%, rgba(255, 201, 132, .15), rgba(255, 201, 132, 0) 70%);
+  animation: wbAurora 19s var(--ease-sine) infinite;
+  -webkit-mask: none;
+  mask: none;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* слой 2 — пятно под курсором: тоже отрисовано заранее, только едет.
+   Отставание в 300 мс читается как густой, тяжёлый свет. */
+.glass-card::after {
+  content: "";
+  position: absolute;
+  left: 0; top: 0;
+  width: 340px; height: 340px;
+  margin: -170px 0 0 -170px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(255, 196, 118, .26),
+    rgba(217, 102, 15, .11) 44%,
+    rgba(217, 102, 15, 0) 70%);
+  transform: translate3d(var(--px), var(--py), 0);
+  opacity: 0;
+  box-shadow: none;
+  transition:
+    transform 300ms var(--ease-move),
+    opacity   var(--dur-3) var(--ease-inout);
+  pointer-events: none;
+  z-index: 1;
+}
+.glass-card > * { position: relative; z-index: 2; }
+
+@keyframes wbAurora {
+  0%   { transform: translate3d(-3%,  2%, 0) scale(1);    opacity: .74; }
+  33%  { transform: translate3d( 4%, -3%, 0) scale(1.09); opacity: 1;   }
+  66%  { transform: translate3d( 1%,  4%, 0) scale(.97);  opacity: .84; }
+  100% { transform: translate3d(-3%,  2%, 0) scale(1);    opacity: .74; }
+}
+
+.glass-card:hover,
+.glass-card:focus-visible {
+  background: rgba(217, 102, 15, .045);
+  border-color: rgba(217, 102, 15, .36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
+  transform: translate3d(0, var(--lift-1), 0);
+}
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover::after { opacity: 1; }
+}
+
+.glass-title em { transition: color var(--dur-3) var(--ease-inout); }
+.glass-arrow { display: inline-block; transition: transform var(--dur-2) var(--ease-enter), color var(--dur-2) var(--ease-inout); }
+.glass-card:hover .glass-arrow { color: var(--orange); transform: translate3d(5px, 0, 0); }
+.glass-card:hover .glass-title em { color: var(--orange-soft); }
+.glass-card:active { transform: translate3d(0, 0, 0) scale(.995); transition-duration: 90ms; }
+
+/* ── 10. СНИЖЕННАЯ ПОДВИЖНОСТЬ ───────────────────────────────────────────── */
+/* Информация нигде не спрятана в движении: всё сразу на месте и видно. */
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: .001ms !important;
+    transition-delay: 0ms !important;
+  }
+  .js-motion [data-reveal] { opacity: 1 !important; transform: none !important; filter: none !important; }
+  .js-motion [data-chart] canvas { clip-path: none !important; opacity: 1 !important; }
+  .js-motion .mechanism-steps article .step-icon i { transform: scaleY(1) !important; }
+  .js-motion .epoch-rows[data-reveal] .epoch-track i { transform: scaleX(var(--fill, 1)) !important; }
+  .js-motion body::before { animation: none !important; }
+  .glass-card::before { animation: none !important; opacity: .8; }
+  .topbar.is-hidden { transform: none !important; }
+}
