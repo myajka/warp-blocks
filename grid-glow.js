@@ -1,5 +1,13 @@
 /* Подсветка квадратной сетки под курсором: слой .grid-glow виден только
    через маску-пятно, координаты которой мягко догоняют мышь. */
+(function stuckBar() {
+  var bar = document.querySelector(".topbar");
+  if (!bar) return;
+  function upd() { bar.classList.toggle("is-stuck", window.scrollY > 24); }
+  upd();
+  window.addEventListener("scroll", upd, { passive: true });
+})();
+
 (function gridGlow() {
   // шаг сетки — ровно четверть расстояния между разметочными линиями (20%)
   function measure() {

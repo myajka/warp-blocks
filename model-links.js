@@ -5,9 +5,9 @@
 
   // 1. подсветка связанных мест — только на десктопе
   function targets(row) {
-    return [].slice.call(document.querySelectorAll(row.dataset.affects)).map(function (e) {
-      return e.closest(".metric, .chart-card, .epoch-rows, .trade-card, .clock-consequence > div") || e;
-    });
+    return [].slice.call(document.querySelectorAll(row.dataset.affects))
+      .filter(function (e) { return !row.contains(e); })   // подпись внутри самой строки не подсвечиваем
+      .map(function (e) { return e.closest(".metric, .chart-card, .epoch-rows, .trade-card, .clock-consequence > div") || e; });
   }
   var clearTimer = 0;
   function flash(row, hold) {
@@ -36,7 +36,15 @@
     var host = btn.closest(".control-row, .toggle-row") || btn.parentElement;
     host.appendChild(box);
 
-    function open() { host.classList.add("hint-open"); }
+    function open() {
+      host.classList.add("hint-open");
+      if (wide.matches) {                      // ставим окно под иконкой
+        var left = btn.offsetLeft - 10;
+        var max = host.clientWidth - 268;
+        box.style.left = Math.max(0, Math.min(left, max)) + "px";
+        box.style.top = (btn.offsetTop + btn.offsetHeight + 8) + "px";
+      } else { box.style.left = ""; box.style.top = ""; }
+    }
     function close() { host.classList.remove("hint-open"); }
 
     btn.addEventListener("click", function (e) {

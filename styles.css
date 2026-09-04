@@ -2058,7 +2058,7 @@ html, body { overflow-x: clip; }
 }
 
 /* на мобильном полоски шагов пульсируют по кругу */
-@media (max-width: 900px) {
+@media all {
   .js-motion .step-icon i {
     transform: none !important;
     transform-origin: bottom;
@@ -3087,3 +3087,54 @@ footer { border-top: 1px solid var(--line); }
   .bip-explainer { padding-block: 64px 24px; }
   .decision-callout { margin-top: 72px; padding-top: 34px; padding-bottom: 56px; }
 }
+/* тултип всегда поверх соседних строк панели */
+.control-row, .toggle-row { z-index: 0; }
+.hint-open { z-index: 20 !important; }
+@media (min-width: 901px) {
+  .hint-open .hint-box { z-index: 30; }
+}
+/* тултип всегда над остальным содержимым панели */
+.hint-box { z-index: 60; }
+.control-row, .toggle-row { position: relative; }
+.hint-open { z-index: 40 !important; position: relative; }
+@media (min-width: 901px) {
+  .hint-open .hint-box { right: auto; z-index: 60; }
+}
+@media (min-width: 901px) {
+  /* окно подсказки — вплотную под иконкой */
+  .hint-open .hint-box { top: auto; width: min(260px, 100%); }
+}
+/* под графиком 04 — сплошной фон, сетка не просвечивает */
+.tradeoffs .chart-card canvas { background: var(--paper); }
+/* приглашение к модели: светлое и над панелью, а не под ней */
+.model-tip {
+  top: auto;
+  bottom: calc(100% + 12px);
+  background: var(--white);
+  color: var(--ink);
+  border-color: var(--orange);
+  box-shadow: 0 16px 34px -18px rgba(0, 0, 0, .5);
+  transform: translateY(6px);
+}
+.model-tip.is-on { transform: none; }
+.model-tip b { color: var(--orange); }
+.model-tip span { color: var(--muted); }
+.model-tip::before {
+  top: auto;
+  bottom: -5px;
+  background: var(--white);
+  border: 0;
+  border-right: 1px solid var(--orange);
+  border-bottom: 1px solid var(--orange);
+}
+/* карточка графика 04 целиком на сплошном фоне, до внешней рамки */
+.tradeoffs .chart-card,
+.tradeoffs .chart-card:hover { background: var(--paper) !important; }
+/* на первом экране шапка прозрачная — линии сетки видны под ней */
+.topbar { background: transparent; border-bottom-color: transparent; }
+.topbar.is-stuck { background: rgba(7, 11, 10, .94); border-bottom-color: var(--line); }
+body.over-light .topbar { background: transparent; }
+body.over-light .topbar.is-stuck { background: rgba(242, 241, 236, .96); }
+/* пока шапка прозрачная — без размытия, иначе линии под ней исчезают */
+.topbar { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.topbar.is-stuck { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
